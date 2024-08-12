@@ -7,6 +7,7 @@
 
 import Foundation
 
+// Model representing a recipe in the app.
 struct Recipe: Codable, Identifiable {
     let id: String
     let name: String
