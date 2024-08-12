@@ -11,7 +11,7 @@
 
 1. **Clone the repository:**
     ```sh
-    git clone https://github.com/your-username/recipes-app.git
+    https://github.com/RomaricAR/RecipesApp.git
     ```
 2. **Open the project in Xcode:**
     ```sh
