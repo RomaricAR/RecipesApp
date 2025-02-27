@@ -7,19 +7,18 @@
 
 import SwiftUI
 
-// View responsible for displaying a list of dessert recipes.
 struct RecipesView: View {
-    @StateObject var viewModel = RecipesViewModel()
+    let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    @StateObject var viewModel = RecipesViewModel(networkService: NetworkingService.shared)
     @State private var showAlert = false
-
     var body: some View {
         NavigationView {
             Group {
                 if viewModel.isLoading {
-                    // Show a loading indicator while data is being fetched.
                     ProgressView("Loading Recipes...")
+                        .accessibilityIdentifier("loadingIndicator")
+                        .progressViewStyle(CircularProgressViewStyle())
                 } else if !viewModel.recipes.isEmpty {
-                    // Display the list of recipes using LazyVStack to optimize performance.
                     ScrollView {
                         LazyVStack(alignment: .leading) {
                             ForEach(viewModel.recipes, id: \.id) { recipe in
@@ -29,49 +28,57 @@ struct RecipesView: View {
                                             image.resizable()
                                         } placeholder: {
                                             ProgressView()
+                                                .accessibilityIdentifier("thumbnailLoading_\(recipe.id)")
                                         }
                                         .frame(width: 50, height: 50)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .accessibilityIdentifier("thumbnailImage_\(recipe.id)")
                                         Text(recipe.name.titleCased())
                                             .font(.title3)
                                             .bold()
+                                            .accessibilityIdentifier("recipeName_\(recipe.id)")
                                         Spacer()
                                         Image(systemName: "chevron.forward")
+                                            .accessibilityIdentifier("chevron_\(recipe.id)")
                                     }
                                     .foregroundStyle(Color.primary)
                                     .padding(.vertical, 5)
                                     .frame(minWidth: 360, alignment: .leading)
                                 }
+                                .accessibilityIdentifier("recipeRow_\(recipe.id)")
                                 Divider()
                             }
                         }
                         .padding(.horizontal)
                     }
+                    .accessibilityIdentifier("recipesScrollView")
                 } else {
                     Text("No recipes found.")
+                        .accessibilityIdentifier("noRecipesLabel")
                 }
             }
             .navigationTitle("Desserts")
             .alert(isPresented: $showAlert) {
-                // Show an alert if an error occurs during data fetching.
-                Alert(title: Text("Error"), message: Text(viewModel.errorMessage ?? "An unknown error occurred."), dismissButton: .default(Text("OK")))
+                Alert(
+                    title: Text("Error"),
+                    message: Text(viewModel.errorMessage ?? "An unknown error occurred."),
+                    dismissButton: .default(Text("OK"))
+                )
             }
+            .accessibilityIdentifier("recipesView")
             .onAppear {
-                // Fetch the initial list of recipes when the view appears.
                 Task {
-                    await viewModel.fetchRecipes()
-                    if viewModel.errorMessage != nil {
-                        showAlert = true
+                    if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+                        await viewModel.fetchRecipes()
+                        if viewModel.errorMessage != nil {
+                            showAlert = true
+                        }
                     }
                 }
             }
         }
     }
 }
-
-
-
-
 
 #Preview {
     RecipesView()

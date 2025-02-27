@@ -31,6 +31,13 @@
         "identifier" : "987390DB2C62DC0B009B470F",
         "name" : "RecipesTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Recipes.xcodeproj",
+        "identifier" : "986DC3872D6924D6001D4813",
+        "name" : "RecipesUITests"
+      }
     }
   ],
   "version" : 1

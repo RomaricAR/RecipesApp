@@ -7,27 +7,25 @@
 
 import SwiftUI
 
-// View responsible for displaying the details of a selected recipe.
 struct RecipeDetailsView: View {
     let recipeID: String
     let recipeThumbnailURL: String
-    @StateObject var viewModel = RecipeDetailsViewModel()
-    
+    @StateObject var viewModel = RecipeDetailsViewModel(networkService: NetworkingService.shared)
     @State private var imageVisible = false
     @State private var showAlert = false
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading) {
                 if viewModel.isLoading {
-                    // Show a loading indicator while fetching recipe details.
                     ProgressView("Loading Recipe Details...")
+                        .accessibilityIdentifier("loadingIndicator")
+                        .progressViewStyle(CircularProgressViewStyle())
                 } else if let recipe = viewModel.recipeDetails {
                     Text(recipe.recipeName.titleCased())
                         .bold()
                         .font(.title)
                         .padding(.top, -30)
-                    
+                        .accessibilityIdentifier("recipeNameLabel")
                     AsyncImage(url: URL(string: recipe.recipeThumbnailURL)) { image in
                         image
                             .resizable()
@@ -35,38 +33,41 @@ struct RecipeDetailsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 5))
                             .frame(width: 320)
                             .shadow(radius: 3)
+                            .accessibilityIdentifier("recipeImage")
                     } placeholder: {
                         ProgressView()
+                            .accessibilityIdentifier("imageLoadingIndicator")
                     }
                     Text("Instructions:")
                         .bold()
                         .font(.title2)
                         .padding(.vertical)
-                    
-                    Text(processInstructions(recipe.instructions))
-                    
+                        .accessibilityIdentifier("instructionsHeader")
+                    Text(recipe.instructions)
+                        .accessibilityIdentifier("instructionsText")
                     Text("Ingredients/Measurements:")
                         .bold()
                         .font(.title2)
                         .padding(.vertical)
-                    
+                        .accessibilityIdentifier("ingredientsHeader")
                     VStack(alignment: .leading, spacing: 10) {
-                        // Pair each ingredient with its measurement
                         let ingredientPairs = Array(zip(recipe.ingredients, recipe.measurements))
                         let uniquePairs = ingredientPairs.enumerated().map { index, pair in
                             return (id: "\(index)-\(pair.0)-\(pair.1)", pair: pair)
                         }
-                        
-                        // Display each ingredient and its measurement
                         ForEach(uniquePairs, id: \.id) { item in
                             HStack {
-                                Text(processIngredientAndMeasurement(item.pair.0, with: item.pair.1))
+                                Text(standardizeIngredientName(item.pair.0))
+                                    .accessibilityIdentifier("ingredient_\(item.id)")
+                                Text(item.pair.1)
+                                    .accessibilityIdentifier("measurement_\(item.id)")
                             }
                         }
                     }
-                    
                 } else {
-                    Text("No details available.")                    }
+                    Text("No details available.")
+                        .accessibilityIdentifier("noDetailsLabel")
+                }
             }
             .padding()
             .scaleEffect(imageVisible ? 1.0 : 0.8)  // Scale effect
@@ -75,15 +76,23 @@ struct RecipeDetailsView: View {
                 imageVisible = true
             }
             .alert(isPresented: $showAlert) {
-                Alert(title: Text("Error"), message: Text(viewModel.errorMessage ?? "An unknown error occurred."), dismissButton: .default(Text("OK")))
+                Alert(
+                    title: Text("Error"),
+                    message: Text(viewModel.errorMessage ?? "An unknown error occurred."),
+                    dismissButton: .default(Text("OK"))
+                )
             }
+            .accessibilityIdentifier("recipeDetailsView")
             .task {
-                await viewModel.fetchRecipeDetails(id: recipeID, thumbnailURL: recipeThumbnailURL)
+                await viewModel.fetchRecipeDetails(id: recipeID)
                 if viewModel.errorMessage != nil {
                     showAlert = true
                 }
             }
         }
+    }
+    func standardizeIngredientName(_ ingredient: String) -> String {
+        return ingredient.capitalized
     }
 }
 

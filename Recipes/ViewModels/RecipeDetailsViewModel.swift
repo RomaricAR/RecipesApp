@@ -7,47 +7,31 @@
 
 import Foundation
 
-// ViewModel responsible for managing the state and data logic for displaying details of a selected recipe.
 class RecipeDetailsViewModel: ObservableObject {
-    @Published var recipeDetails: RecipeDetailsModel?
+    @Published private(set) var recipeDetails: RecipeDetailsModel?
+    @Published private(set) var isLoading = false
     @Published var recipeThumbnailURL: String?
-    @Published var isLoading = false
-    var errorMessage: String?
-
-    // Network service for fetching recipe details.
-    private var networkService: NetworkServiceProtocol
-    
+    @Published private(set) var errorMessage: String?
     var recipeDetailsUrlString = "https://www.themealdb.com/api/json/v1/1/lookup.php?"
-
-    // Initializer that accepts a network service dependency.
-    init(networkService: NetworkServiceProtocol = NetworkingService.shared) {
+    private let networkService: NetworkServiceProtocol
+    init(networkService: NetworkServiceProtocol ) {
         self.networkService = networkService
     }
-
-    // Fetches the details of a recipe from the API by its ID.
     @MainActor
-    func fetchRecipeDetails(id: String, thumbnailURL: String) async {
+    func fetchRecipeDetails(id: String) async {
         self.isLoading = true
-        self.recipeThumbnailURL = thumbnailURL
-        
         do {
-            let fetchedRecipeDetails = try await networkService.fetchRecipeDetails(id: id)
-            
-            // Validate the fetched details and ensure they are complete.
-            guard fetchedRecipeDetails.isValid else {
-                throw ErrorType.validationError
+            let data: RecipeDetailResponse = try await networkService.fetchData(endPoint: RecipeEndpoint.recipeDetails(id: id).urlString)
+            guard let recipeDetails = data.details.first else {
+                throw URLError(.badServerResponse)
             }
-            
-            self.recipeDetails = fetchedRecipeDetails
+            self.recipeDetails = recipeDetails
         } catch {
-            self.errorMessage = error.localizedDescription
-        }
-        self.isLoading = false
+            handle(error.asRecipeError)
+            }
+            self.isLoading = false
     }
-    
-    //For unit testing purposes only
-    func constructRecipeDetailsURL(id: String) -> URL? {
-        return URL(string: "\(recipeDetailsUrlString)i=\(id)")
+    private func handle(_ error: RecipeError) {
+        errorMessage = error.errorDescription
     }
 }
-

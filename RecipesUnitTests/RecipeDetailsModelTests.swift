@@ -9,29 +9,18 @@ import XCTest
 @testable import Recipes
 
 final class RecipeDetailsModelTests: XCTestCase {
-    
     class URLErrorMockService: NetworkServiceProtocol {
-        func fetchRecipes(category: String) async throws -> [Recipe] {
-            throw URLError(.notConnectedToInternet)
-        }
-        func fetchRecipeDetails(id: String) async throws -> RecipeDetailsModel {
+        func fetchData<T>(endPoint: String) async throws -> T where T: Decodable {
             throw URLError(.notConnectedToInternet)
         }
     }
     class DecodingErrorMockService: NetworkServiceProtocol {
-        func fetchRecipes(category: String) async throws -> [Recipe] {
-            throw DecodingError.typeMismatch(String.self, .init(codingPath: [], debugDescription: "Expected String"))
-        }
-        func fetchRecipeDetails(id: String) async throws -> RecipeDetailsModel {
+        func fetchData<T>(endPoint: String) async throws -> T where T: Decodable {
             throw DecodingError.typeMismatch(String.self, .init(codingPath: [], debugDescription: "Expected String"))
         }
     }
     class GenericErrorMockService: NetworkServiceProtocol {
-        func fetchRecipes(category: String) async throws -> [Recipe] {
-            throw NSError(domain: "TestDomain", code: -1, userInfo: nil)
-        }
-        
-        func fetchRecipeDetails(id: String) async throws -> RecipeDetailsModel {
+        func fetchData<T>(endPoint: String) async throws -> T where T: Decodable {
             throw NSError(domain: "TestDomain", code: -1, userInfo: nil)
         }
     }
@@ -179,30 +168,25 @@ final class RecipeDetailsModelTests: XCTestCase {
     func test_fetchRecipeDetails_whenURLErrorThrown_setsNetworkErrorMessage() async {
         let urlError = URLError(.notConnectedToInternet)
         let viewModel = RecipeDetailsViewModel(networkService: URLErrorMockService())
-        await viewModel.fetchRecipeDetails(id: "1", thumbnailURL: "")
+        await viewModel.fetchRecipeDetails(id: "1")
         let expectedErrorMessage = RecipeError.networkError(urlError).errorDescription
         XCTAssertEqual(viewModel.errorMessage, expectedErrorMessage)
     }
-
     func test_fetchRecipeDetails_whenDecodingErrorThrown_setsDecodingErrorMessage() async {
         let decodingError = DecodingError.typeMismatch(String.self, .init(codingPath: [], debugDescription: "Expected String"))
         let viewModel = RecipeDetailsViewModel(networkService: DecodingErrorMockService())
-        await viewModel.fetchRecipeDetails(id: "1", thumbnailURL: "")
+        await viewModel.fetchRecipeDetails(id: "1")
         let expectedErrorMessage = RecipeError.decodingError(decodingError).errorDescription
         XCTAssertEqual(viewModel.errorMessage, expectedErrorMessage)
     }
-
     func test_fetchRecipeDetails_whenGenericErrorThrown_setsUnknownErrorMessage() async {
         let genericError = NSError(domain: "TestDomain", code: -1, userInfo: nil)
         let viewModel = RecipeDetailsViewModel(networkService: GenericErrorMockService())
-        await viewModel.fetchRecipeDetails(id: "1", thumbnailURL: "")
+        await viewModel.fetchRecipeDetails(id: "1")
         let expectedErrorMessage = RecipeError.unknown(genericError).errorDescription
         XCTAssertEqual(viewModel.errorMessage, expectedErrorMessage)
     }
 }
-
-
-
 final class NetworkingServiceTests: XCTestCase {
     func test_fetchRecipeDetails_withValidID_returnsRecipeDetails() async throws {
         // Arrange
@@ -227,7 +211,7 @@ final class NetworkingServiceTests: XCTestCase {
             return (response, mockResponse)
         }
         let session = URLSession(configuration: configuration)
-        let service = NetworkingService() // Assume it uses the mocked session somehow
+        let service = MockNetworkService()
         // Act
         let recipeDetails = try await service.fetchRecipeDetails(id: "53049")
         // Assert
@@ -239,20 +223,16 @@ final class NetworkingServiceTests: XCTestCase {
 // Mock URLProtocol to intercept requests
 class MockURLProtocol: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-    
     override class func canInit(with request: URLRequest) -> Bool {
         return true
     }
-    
     override class func canonicalRequest(for request: URLRequest) -> URLRequest {
         return request
     }
-    
     override func startLoading() {
         guard let handler = MockURLProtocol.requestHandler else {
             fatalError("Handler is unavailable.")
         }
-        
         do {
             let (response, data) = try handler(request)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -262,6 +242,5 @@ class MockURLProtocol: URLProtocol {
             client?.urlProtocol(self, didFailWithError: error)
         }
     }
-    
     override func stopLoading() {}
 }

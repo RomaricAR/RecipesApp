@@ -15,6 +15,7 @@ final class RecipeViewModelTests: XCTestCase {
         super.setUp()
         mockNetworkService = MockNetworkService()
         recipesViewModel = RecipesViewModel(networkService: mockNetworkService)
+   
     }
     override func tearDown() {
         recipesViewModel = nil
@@ -24,21 +25,30 @@ final class RecipeViewModelTests: XCTestCase {
     // MARK: - Fetching Recipes Tests
     func test_a_recipe_is_fetched() async {
         // Given
-        var recipes = [Recipe]()
+        do {
+            mockNetworkService.mockResponse = try JSONEncoder().encode(mockValidRecipes())
+        } catch {
+            XCTFail("Encoding failed with error: \(error)")
+            return
+        }
         // When
         await recipesViewModel.fetchRecipes()
-        recipes = recipesViewModel.recipes
+        let recipes = recipesViewModel.recipes
         // Then
         XCTAssertEqual(recipes.count, 2)
     }
     func test_fetchRecipes_whenNoValidRecipesExist_throwsValidationError() async {
         // Given
-        mockNetworkService.shouldReturnInvalidRecipes = true
-
+        do {
+            mockNetworkService.mockResponse = try JSONEncoder().encode(RecipesResponse(recipes:
+                [Recipe(id: "", name: "", thumbnailURL: ""), Recipe(id: "", name: "", thumbnailURL: "")]))
+        } catch {
+            XCTFail("Encoding failed with error: \(error)")
+            return
+        }
         // When
         await recipesViewModel.fetchRecipes()
         let result = recipesViewModel.recipes.filter { $0.isValid }
-
         // Then
         XCTAssertEqual(result.count, 0)
         XCTAssertEqual(recipesViewModel.errorMessage, RecipeError.noValidRecipes.errorDescription)
@@ -108,23 +118,33 @@ final class RecipeViewModelTests: XCTestCase {
     func test_recipe_is_valid() async {
         // Given
         var recipe = [Recipe]()
+        do {
+            mockNetworkService.mockResponse = try JSONEncoder().encode(mockValidRecipes())
+        } catch {
+            XCTFail("Encoding failed with error: \(error)")
+            return
+        }
         // When
         await recipesViewModel.fetchRecipes()
         recipe = recipesViewModel.recipes.filter { $0.isValid }
         // Then
         XCTAssertTrue(!recipe.isEmpty)
     }
+    private func mockValidRecipes() -> RecipesResponse {
+        return RecipesResponse(recipes:
+            [
+            Recipe(id: "1", name: "Pasta", thumbnailURL: "https://example.com/pasta.jpg"),
+            Recipe(id: "2", name: "Pizza", thumbnailURL: "https://example.com/pizza.jpg")
+        ])
+    }
 }
 // MARK: - Mock Failing Network Service
 class FailingNetworkService: NetworkServiceProtocol {
+    func fetchData<T>(endPoint: String) async throws -> T where T : Decodable {
+        throw errorType
+    }
     let errorType: RecipeError
     init(errorType: RecipeError) {
         self.errorType = errorType
-    }
-    func fetchRecipes(category: String) async throws -> [Recipe] {
-        throw errorType
-    }
-    func fetchRecipeDetails(id: String) async throws -> RecipeDetailsModel {
-        throw errorType
     }
 }

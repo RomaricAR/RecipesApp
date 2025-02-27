@@ -6,3 +6,10 @@
 //
 
 import Foundation
+//
+//struct RecipeDetailResponse: Codable {
+//    let recipes: [RecipeDetailsModel]
+//    enum CodingKeys: String, CodingKey {
+//        case recipes = "meals"
+//    }
+//}

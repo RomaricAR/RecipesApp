@@ -6,3 +6,11 @@
 //
 
 import Foundation
+
+//struct RecipesResponse: APIResponse, Decodable {
+//    let items: [Recipe]
+//
+//    enum CodingKeys: String, CodingKey {
+//        case items = "meals"
+//    }
+//}

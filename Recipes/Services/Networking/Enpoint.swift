@@ -6,3 +6,7 @@
 //
 
 import Foundation
+
+protocol Endpoint {
+    var urlString: String { get }
+}

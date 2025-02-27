@@ -6,3 +6,8 @@
 //
 
 import Foundation
+
+//protocol APIResponse {
+//    associatedtype Item
+//    var items: [Item] { get }
+//}
